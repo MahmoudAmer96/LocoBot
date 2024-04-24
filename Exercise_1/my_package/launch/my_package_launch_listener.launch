@@ -1,0 +1,5 @@
+<launch>
+    <!-- My Package launch file -->
+    <node pkg="my_package" type="listener.py" name="listener"  output="screen">
+    </node>
+</launch>
