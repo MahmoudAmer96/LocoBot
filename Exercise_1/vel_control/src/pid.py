@@ -33,7 +33,7 @@ class RobotControl():
         self.ANGULAR_VELOCITY = 0.5
         self.distance_tolerance = 0.5
         rospy.on_shutdown(self.shutdownhook)
-        
+
     def shutdownhook(self):
         # works better than the rospy.is_shutdown()
         self.ctrl_c = True
@@ -54,8 +54,8 @@ class RobotControl():
         Method to compute distance from current position to the goal
         @returns 	euclidean distance from current point to goal
         """
-        x = self.pose[0] - self.goal[0]
-        y = self.pose[1] - self.goal[1]
+        x = self.tmp[0] - self.goal[0]
+        y = self.tmp[1] - self.goal[1]
         return math.sqrt((x ** 2) + (y ** 2))
 
     def stop_robot(self):
@@ -79,26 +79,26 @@ class RobotControl():
                 self.rate.sleep()
 
     def moveGoal_pid(self):
+        self.tmp = self.pose - self.init_pose
         e_prev = self.euclidean_distance()
-        w_prev = 0.
-        dt = 1 / 10 # rate
+        w_prev = self.tmp[2]
+        dt = 1 / self.rate # rate
         e_sum = 0.
-        w_sum = 0
-        K_Pw = 2.
-        K_Pv = 2
-        K_I = 2.
-        K_D = 2.
+        w_sum = 0.
+        K_Pw = 1.
+        K_Pv = 1
+        K_I = 1.
+        K_D = 1.
         goal_angle = math.atan2((self.goal[0] - self.init_pose[0]), (self.goal[0] - self.init_pose[0]))
 
         while (self.euclidean_distance() > self.distance_tolerance):
-            self.tmp = self.pose - [0, 0, 0]    # ??? get current pose here. Do not forget to subtract by the origin to remove init. translations.
-
+            self.tmp = self.pose - self.init_pose    # get current pose here. Do not forget to subtract by the origin to remove init. translations.
             e = self.euclidean_distance()   # get euclidean distance
             dedt = (e - e_prev) / dt
             e_sum = e_sum + e * dt
             e_prev = e
 
-            w = min(self.tmp[2], goal_angle)
+            w = min((2 * math.pi - (goal_angle - self.tmp[2])), (goal_angle - self.tmp[2]))   # choose the smaller angle
             dwdt = (w - w_prev) / dt
             w_sum = w_sum + w * dt
             w_prev = w
