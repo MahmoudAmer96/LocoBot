@@ -25,6 +25,10 @@ PermissionError: [Errno 13] Permission denied: '/opt/ros/my_package'
 ### Solution
 ```shell
 vi ~/.bashrc
-
+```
+```shell
 export ROS_PACKAGE_PATH=${ROS_PACKAGE_PATH}:~/[Projekt folder]/
+```
+```shell
+echo $ROS_PACKAGE_PATH
 ```
