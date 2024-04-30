@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="lss_versuch3" type="sinus.py" name="robot_control_node">
+    </node>
+</launch>
