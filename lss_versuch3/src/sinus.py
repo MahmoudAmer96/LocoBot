@@ -18,7 +18,7 @@ def getGoals():
 
     return np.vstack((x,y)).T
 
-class RobotConxtrol():
+class RobotControl():
 
     def __init__(self):
         rospy.init_node('robot_control_node', anonymous=True)
