@@ -1,5 +1,4 @@
 <launch>
-    <!-- lss versuch1 launch file -->
-    <node pkg="lss_versuch1" type="simple_loop.py" name="ObiWan"  output="screen">
-    </node>
+    <node pkg="lss_versuch1" type="simple_topic_publisher.py" name="simple_topic_publisher"></node>
+    <node pkg="lss_versuch1" type="simple_topic_subscriber.py" name="simple_topic_publisher" output="screen"></node>
 </launch>
