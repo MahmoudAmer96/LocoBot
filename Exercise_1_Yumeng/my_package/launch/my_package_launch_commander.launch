@@ -1,0 +1,5 @@
+<launch>
+    <!-- My Package launch file -->
+    <node pkg="my_package" type="commander.py" name="commander"  output="screen">
+    </node>
+</launch>
