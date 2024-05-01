@@ -1,5 +1,0 @@
-<launch>
-    <!-- My Package launch file -->
-    <node pkg="vel_control" type="pid.py" name="robot_control_node"  output="screen">
-    </node>
-</launch>
