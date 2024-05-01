@@ -29,9 +29,9 @@ class RobotControl():
         self.ctrl_c = False
         self.rate = rospy.Rate(10) # What is this?
         self.rate.sleep()
-        self.LINEAR_VELOCITY = 0.5
-        self.ANGULAR_VELOCITY = 0.5
-        self.distance_tolerance = 0.5
+        self.LINEAR_VELOCITY = 0.5      # constraint?
+        self.ANGULAR_VELOCITY = 0.5     # constraint?
+        self.distance_tolerance = 1
         rospy.on_shutdown(self.shutdownhook)
 
     def shutdownhook(self):
@@ -81,15 +81,17 @@ class RobotControl():
     def moveGoal_pid(self):
         self.tmp = self.pose - self.init_pose
         e_prev = self.euclidean_distance()
-        w_prev = self.tmp[2]
-        dt = 1 / self.rate # rate
+
+        goal_angle = math.atan2((self.goal[0] - self.init_pose[0]), (self.goal[0] - self.init_pose[0]))
+        w_prev = goal_angle - self.tmp[2]    # theta
+        dt = 1 / self.rate      # rate
         e_sum = 0.
         w_sum = 0.
         K_Pw = 1.
         K_Pv = 1
         K_I = 1.
         K_D = 1.
-        goal_angle = math.atan2((self.goal[0] - self.init_pose[0]), (self.goal[0] - self.init_pose[0]))
+
 
         while (self.euclidean_distance() > self.distance_tolerance):
             self.tmp = self.pose - self.init_pose    # get current pose here. Do not forget to subtract by the origin to remove init. translations.
@@ -98,7 +100,12 @@ class RobotControl():
             e_sum = e_sum + e * dt
             e_prev = e
 
-            w = min((2 * math.pi - (goal_angle - self.tmp[2])), (goal_angle - self.tmp[2]))   # choose the smaller angle
+            # w = min((2 * math.pi - (goal_angle - self.tmp[2])), (goal_angle - self.tmp[2]))
+            if abs(goal_angle - self.tmp[2]) >= math.pi:        # choose the smaller angle
+                w = goal_angle - self.tmp[2]
+            else:
+                w = 2 * math.pi - (goal_angle - self.tmp[2])
+
             dwdt = (w - w_prev) / dt
             w_sum = w_sum + w * dt
             w_prev = w
