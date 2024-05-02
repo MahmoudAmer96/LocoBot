@@ -53,11 +53,11 @@ class RobotControl():
         theta = math.atan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3))
         self.pose = np.array([x, y, theta])
 
-    def euclidean_distance(self, r_pose):
+    def euclidean_distance(self):
         """
         Method to compute distance from real position to the goal e(t) = g(t) − x(t)
         """
-        return np.linalg.norm(self.goal - r_pose[:2])
+        return math.sqrt(math.pow(self.pose[1] - self.tmp[1], 2) + math.pow(self.pose[0] - self.tmp[0], 2))
 
     def theta_g(self, r_pose):
         """
@@ -87,14 +87,17 @@ class RobotControl():
                 self.rate.sleep()
 
     def moveGoal_pid(self):
-        e_prev = self.euclidean_distance(self.start)
+        self.tmp = self.pose - self.init_pose
+        e_prev = self.euclidean_distance()
         w_prev = 0.
         prev_time = self.pose.T
         e_sum = 0.
-        while self.euclidean_distance(self.pose) > self.distance_tolerance:
-            self.tmp = self.pose  # get current pose here. Do not forget to subtract by the origin to remove init. translations.
+        while self.euclidean_distance() > self.distance_tolerance:
+            self.tmp = self.pose - self.init_pose  # get current pose here. Do not forget to subtract by the origin to remove init. translations.
             dt = self.pose.T - prev_time
-            e = self.euclidean_distance(self.tmp)  # get euclidean distance
+            if dt is 0:
+                dt = 0.1
+            e = self.euclidean_distance()  # get euclidean distance
             dedt = (e - e_prev) / dt
             e_sum = e_sum + e * dt
             e_prev = e
@@ -117,7 +120,7 @@ class RobotControl():
             dwdt = w / dt
             self.cmd.angular.z = w
 
-            self.vel_publisher.publish()
+            self.vel_publisher.publish(self.cmd)
             self.gather_traveled.append([self.tmp[0], self.tmp[1]])
             self.rate.sleep()
 
