@@ -22,7 +22,7 @@ class RobotControl():
 
     def __init__(self):
         rospy.init_node('robot_control_node', anonymous=True)
-        self.vel_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
+        self.vel_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.odom_subscriber = rospy.Subscriber('/odom', Odometry, self.odometryCb)
 
         self.cmd = Twist()
@@ -36,7 +36,6 @@ class RobotControl():
         self.Kp = 1.0
         self.Kd = 0.0
         self.Ki = 0.0
-        self.Kp = 1.0
         rospy.on_shutdown(self.shutdownhook)
         
     def shutdownhook(self):
@@ -94,7 +93,7 @@ class RobotControl():
         e_sum = 0.
         while self.euclidean_distance(self.pose) > self.distance_tolerance:
             self.tmp = self.pose  # get current pose here. Do not forget to subtract by the origin to remove init. translations.
-            dt = self.pose - prev_time
+            dt = self.pose.T - prev_time
             e = self.euclidean_distance(self.tmp)  # get euclidean distance
             dedt = (e - e_prev) / dt
             e_sum = e_sum + e * dt
@@ -116,7 +115,6 @@ class RobotControl():
                 w = w + 2 * np.pi
             w = self.Kp * w
             dwdt = w / dt
-
             self.cmd.angular.z = w
 
             self.vel_publisher.publish()
