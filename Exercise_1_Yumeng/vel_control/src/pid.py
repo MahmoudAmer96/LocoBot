@@ -23,19 +23,21 @@ class RobotControl():
 
     def __init__(self):
         rospy.init_node('robot_control_node', anonymous = True)
-        self.vel_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size = 1)
+        self.vel_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
         self.odom_subscriber = rospy.Subscriber('/odom', Odometry, self.odometryCb)
         self.cmd = Twist()
         self.ctrl_c = False
-        self.rate = rospy.Rate(10) # What is this?
+        self.rate = rospy.Rate(10)
         self.rate.sleep()
-        self.LINEAR_VELOCITY = 0.5      # constraint?
-        self.ANGULAR_VELOCITY = 0.5     # constraint?
-        self.distance_tolerance = 1
-        self.K_Pw = 1.
-        self.K_Pv = 1
-        self.K_I = 1.
-        self.K_D = 1.
+        self.LINEAR_VELOCITY = 0.4      # constraint
+        self.ANGULAR_VELOCITY = 0.
+        self.distance_tolerance = 0.1
+
+        self.K_Pv = 0.4
+        self.K_Pw = 0.8
+        self.K_I = 0.01
+        self.K_D = 0.01
+
         rospy.on_shutdown(self.shutdownhook)
 
     def shutdownhook(self):
@@ -60,10 +62,10 @@ class RobotControl():
         """
         x = self.tmp[0] - self.goal[0]
         y = self.tmp[1] - self.goal[1]
-        return math.sqrt((x ** 2) + (y ** 2))
+        return math.sqrt(pow(x, 2) + pow(y, 2))
 
     def get_theta_g(self):
-        return math.atan2((self.goal[0] - self.tmp[0]), (self.goal[0] - self.tmp[0]))
+        return math.atan2((self.goal[1] - self.tmp[1]), (self.goal[0] - self.tmp[0]))
 
     def stop_robot(self):
         self.cmd.linear.x = 0.0
@@ -88,12 +90,8 @@ class RobotControl():
     def moveGoal_pid(self):
         self.tmp = self.pose - self.init_pose
         e_prev = self.euclidean_distance()
-
-        goal_angle = self.get_theta_g()
-        w_prev = goal_angle - self.tmp[2]    # theta
-        dt = 1 / self.rate      # rate
+        dt = 0.1      # rate
         e_sum = 0.
-        w_sum = 0.
 
         while (self.euclidean_distance() > self.distance_tolerance):
             self.tmp = self.pose - self.init_pose    # get current pose here. Do not forget to subtract by the origin to remove init. translations.
@@ -102,26 +100,18 @@ class RobotControl():
             e_sum = e_sum + e * dt
             e_prev = e
 
-            # w = min((2 * math.pi - (goal_angle - self.tmp[2])), (goal_angle - self.tmp[2]))
-            goal_angle = self.get_theta_g()
-            w = goal_angle - self.tmp[2]
-            if w > math.pi:        # choose the smaller angle
-                w -= 2 * math.pi
-            elif w < -math.pi:
-                w += 2 * math.pi
-            dwdt = (w - w_prev) / dt
-            w_sum = w_sum + w * dt
-            w_prev = w
-
             # Set params of the cmd message
-            self.cmd.linear.x = min((self.K_Pv * e + self.K_I * e_sum + self.K_D * dedt), self.LINEAR_VELOCITY)
+            self.cmd.linear.x = min(self.LINEAR_VELOCITY, self.K_Pv * e + self.K_I * e_sum + self.K_D * dedt)
+            # self.cmd.linear.x = min(self.LINEAR_VELOCITY, self.K_Pv * e)
             self.cmd.linear.y = 0.
             self.cmd.linear.z = 0.
             self.cmd.angular.x = 0.
             self.cmd.angular.y = 0.
-            self.cmd.angular.z = min((self.K_Pw * w + self.K_I * w_sum + self.K_D * dwdt), self.ANGULAR_VELOCITY)
 
-            self.vel_publisher.publish()
+            w = self.get_theta_g() - self.pose[2]
+            self.cmd.angular.z = self.K_Pw * w
+
+            self.vel_publisher.publish(self.cmd)
             self.gather_traveled.append([self.tmp[0], self.tmp[1]])
             self.rate.sleep()
 
