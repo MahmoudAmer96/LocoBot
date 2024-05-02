@@ -29,13 +29,13 @@ class RobotControl():
         self.ctrl_c = False
         self.rate = rospy.Rate(10)  # maintaining a particular rate for a loop
         self.rate.sleep()  # Q: why?
-        self.LINEAR_VELOCITY = 0.
-        self.ANGULAR_VELOCITY = 0.
-        self.distance_tolerance = 0.
+        self.LINEAR_VELOCITY = 0.4
+        self.ANGULAR_VELOCITY = 0.8
+        self.distance_tolerance = 0.1
 
-        self.Kp = 1.0
-        self.Kd = 0.0
-        self.Ki = 0.0
+        self.Kp = 0.4
+        self.Kd = 0.02
+        self.Ki = 0.02
         rospy.on_shutdown(self.shutdownhook)
         
     def shutdownhook(self):
@@ -57,13 +57,13 @@ class RobotControl():
         """
         Method to compute distance from real position to the goal e(t) = g(t) − x(t)
         """
-        return math.sqrt(math.pow(self.pose[1] - self.tmp[1], 2) + math.pow(self.pose[0] - self.tmp[0], 2))
+        return math.sqrt(math.pow(self.goal[1] - self.tmp[1], 2) + math.pow(self.goal[0] - self.tmp[0], 2))
 
-    def theta_g(self, r_pose):
+    def theta_g(self):
         """
         Method to compute radians [-π, π] from real position to the goal math.atan2(y_g - y_r, x_g - x_r)
         """
-        return math.atan2(self.goal[1] - r_pose[1], self.goal[0] - r_pose[0])
+        return math.atan2(self.goal[1] - self.tmp[1], self.goal[0] - self.tmp[0])
     
 
     def stop_robot(self):
@@ -90,35 +90,32 @@ class RobotControl():
         self.tmp = self.pose - self.init_pose
         e_prev = self.euclidean_distance()
         w_prev = 0.
-        prev_time = self.pose.T
         e_sum = 0.
         while self.euclidean_distance() > self.distance_tolerance:
             self.tmp = self.pose - self.init_pose  # get current pose here. Do not forget to subtract by the origin to remove init. translations.
-            dt = self.pose.T - prev_time
-            if dt is 0:
-                dt = 0.1
+            dt = 0.1
             e = self.euclidean_distance()  # get euclidean distance
             dedt = (e - e_prev) / dt
             e_sum = e_sum + e * dt
             e_prev = e
-            prev_time = self.tmp.T
+
             u = self.Kp * e + self.Ki * e_sum + self.Kd * dedt  # Kp*e + Kd*dedt + Ki*e_sum
             
             # Set params of the cmd message
-            self.cmd.linear.x = u
+            self.cmd.linear.x = min(self.LINEAR_VELOCITY, u)
             self.cmd.linear.y = 0.
             self.cmd.linear.z = 0.
             self.cmd.angular.x = 0.
             self.cmd.angular.y = 0.
 
-            w = self.theta_g(self.tmp) - self.tmp[2]
-            if w > 1 * np.pi:
-                w = w - 2 * np.pi
-            elif w < -1 * np.pi:
-                w = w + 2 * np.pi
-            w = self.Kp * w
+            w = self.theta_g() - self.pose[2]
+            #if w > 1 * np.pi:
+            #    w = w - 2 * np.pi
+            #elif w < -1 * np.pi:
+            #    w = w + 2 * np.pi
+            w = self.ANGULAR_VELOCITY * w
             dwdt = w / dt
-            self.cmd.angular.z = w
+            self.cmd.angular.z = w + self.Kd * dwdt
 
             self.vel_publisher.publish(self.cmd)
             self.gather_traveled.append([self.tmp[0], self.tmp[1]])
