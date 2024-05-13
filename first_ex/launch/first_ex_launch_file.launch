@@ -1,0 +1,7 @@
+<launch>
+    <!-- first exercise launch file -->
+    <node pkg="first_ex" type="talker.py" name="Listener"  output="screen">
+    </node>
+    <node pkg="first_ex" type="listener.py" name="Talker"  output="screen">
+    </node>
+</launch>
