@@ -61,3 +61,5 @@ sacson:
   metric_waypoint_spacing: 0.255
 
 # add your own dataset params here:
+locobot:
+  metric_waypoint_spacing: 0.1
